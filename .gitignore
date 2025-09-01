@@ -1,0 +1,12 @@
+# Ignore Python-specific files
+*.pyc
+__pycache__/
+
+# Ignore Jupyter Notebook checkpoints
+
+# Ignore large data and model files
+# These should be stored in a shared Google Drive and linked
+data/
+models/
+checkpoints/
+```
