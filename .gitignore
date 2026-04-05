@@ -1,12 +1,26 @@
-# Ignore Python-specific files
+# Python
 *.pyc
 __pycache__/
 
-# Ignore Jupyter Notebook checkpoints
+# Model weights (VERY IMPORTANT)
+*.pth
+*.pt
 
-# Ignore large data and model files
-# These should be stored in a shared Google Drive and linked
+# Data (if added later)
 data/
-models/
+datasets/
 checkpoints/
-```
+
+# Output (generated files)
+output/
+
+# Generated files
+utils/hash_db.json
+
+# Virtual environments
+venv/
+env/
+
+# OS junk
+.DS_Store
+Thumbs.db
