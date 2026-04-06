@@ -146,6 +146,26 @@ def print_results(results, final):
 
 # =========================
 # FUSION
+# -------------------------
+# KEY CHANGES vs original:
+#
+# 1. Face-swap branch (NEW):
+#    When video says FAKE (>0.60) but audio says REAL (<0.40),
+#    this is the classic face-swap pattern — the original audio
+#    is kept/re-dubbed while only the face is replaced.
+#    In this case audio should NOT suppress the video signal.
+#    Weights: video 0.80 / audio 0.20  →  overrides the 50/30/20
+#    default which was incorrectly letting audio cancel video.
+#
+# 2. High-confidence video override threshold lowered:
+#    0.85 → 0.75  (still conservative, but catches strong detections
+#    that were previously missed)
+#
+# 3. Default weights rebalanced (video-first for deepfake use-case):
+#    Old: video 0.50 / audio 0.30 / text 0.20
+#    New: video 0.60 / audio 0.25 / text 0.15
+#    Rationale: video artifacts are the primary deepfake signal;
+#    audio and text are secondary/corroborating channels.
 # =========================
 def fuse_results(results):
 
@@ -170,41 +190,79 @@ def fuse_results(results):
             elif modality == "text":
                 text_fake  = fake_prob
 
-    if video_fake > 0.85:
+    # ------------------------------------------------------------------
+    # FUSION LOGIC
+    # Priority 1 — High-confidence single-modality override
+    # Priority 2 — Face-swap pattern (video FAKE + audio REAL)  ← NEW
+    # Priority 3 — Weighted average (rebalanced weights)
+    # ------------------------------------------------------------------
+
+    override_reason = None
+
+    if video_fake > 0.75:
+        # Strong visual manipulation — video takes full control
         final_fake = video_fake
         override_reason = "High-confidence visual manipulation detected."
+
     elif audio_fake > 0.85:
+        # Strong synthetic audio signal
         final_fake = audio_fake
         override_reason = "High-confidence synthetic audio detected."
+
+    elif video_fake > 0.60 and audio_fake < 0.40:
+        # ---------------------------------------------------------------
+        # Face-swap deepfake pattern:
+        # Video flags manipulation while audio is authentic.
+        # This divergence is expected for face-swaps — the original
+        # audio track is preserved while only the face is replaced.
+        # Giving audio equal or greater weight here is incorrect; we
+        # use an 80/20 split so the video signal drives the verdict.
+        # ---------------------------------------------------------------
+        final_fake = 0.80 * video_fake + 0.20 * audio_fake
+        override_reason = (
+            "Face-swap pattern detected: visual manipulation present with authentic audio. "
+            "Video signal weighted heavily (0.80) over audio (0.20)."
+        )
+
     else:
+        # Default weighted fusion — rebalanced to prioritise video
         final_fake = (
-            0.5 * video_fake +
-            0.3 * audio_fake +
-            0.2 * text_fake
+            0.60 * video_fake +
+            0.25 * audio_fake +
+            0.15 * text_fake
         )
         override_reason = None
 
+    # ------------------------------------------------------------------
+    # Build human-readable explanation
+    # ------------------------------------------------------------------
     explanation_parts = []
 
-    if video_fake > 0.6 and audio_fake < 0.4:
+    if override_reason:
+        explanation_parts.insert(0, override_reason)
+
+    if video_fake > 0.60 and audio_fake < 0.40:
         explanation_parts.append(
             "Strong visual manipulation detected while audio remains consistent."
         )
-    if audio_fake > 0.6 and video_fake < 0.4:
+        explanation_parts.append("Cross-modal inconsistency detected (face-swap pattern).")
+
+    elif video_fake > 0.60 and audio_fake > 0.60:
+        explanation_parts.append(
+            "Both video and audio show manipulation signals — possible full synthetic generation."
+        )
+
+    elif audio_fake > 0.60 and video_fake < 0.40:
         explanation_parts.append(
             "Audio shows synthetic characteristics while visuals appear natural."
         )
-    if text_fake > 0.6:
+
+    if text_fake > 0.60:
         explanation_parts.append("Text exhibits AI-generated patterns.")
-    if video_fake > 0.6 and audio_fake < 0.4:
-        explanation_parts.append("Cross-modal inconsistency detected.")
 
     asr_consistency = results.get("text", {}).get("asr_consistency")
     if asr_consistency is not None and asr_consistency < 0.5:
         explanation_parts.append("Low audio-text consistency suggests manipulation.")
-
-    if override_reason:
-        explanation_parts.insert(0, override_reason)
 
     if not explanation_parts:
         explanation_parts.append("All modalities appear consistent and natural.")
