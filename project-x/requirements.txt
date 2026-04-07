@@ -1,7 +1,42 @@
 # =====================================================================
 # AI-Powered Digital Forensic System — Python Dependencies
 # Install:  pip install -r requirements.txt
+#
+# ⚠️  PYTHON 3.12 COMPATIBLE BUILD
+#
+# KEY CHANGES vs original:
+#
+# 1. tensorflow 2.16.1 → 2.17.0
+#    TF 2.16 introduced Keras 3 which broke tensorflow.python.trackable.
+#    2.17.0 stabilises the Keras 3 migration and restores compatibility
+#    with transformers and mtcnn on Python 3.12.
+#
+# 2. tf-keras KEPT (now pinned to ==2.17.0)
+#    Required explicitly because TF 2.16+ ships Keras 3 as default.
+#    tf-keras provides the legacy Keras 2 API that transformers,
+#    mtcnn, and other packages still depend on internally.
+#    Without it you get: No module named 'tensorflow.python.trackable'
+#
+# 3. transformers 4.46.3 → 4.44.2
+#    4.46.x has a hard dependency on the Keras 3 internal API.
+#    4.44.2 is the last release fully compatible with tf-keras shim
+#    on TF 2.17 without requiring manual KERAS_BACKEND env var hacks.
+#
+# 4. torch 2.2.2 → 2.3.1 + matching torchvision/torchaudio
+#    2.2.2 has a known Python 3.12 multiprocessing bug that causes
+#    silent DataLoader hangs. 2.3.1 is the first fully stable 3.12
+#    release. torchvision and torchaudio bumped to match exactly.
+#
+# 5. numpy 1.26.4 — KEPT as-is
+#    This is the last numpy 1.x release. numpy 2.x breaks torch 2.3,
+#    librosa, and opencv simultaneously. Do not upgrade to 2.x.
+#
+# INSTALL ORDER (important — run in this sequence):
+#   pip install torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1
+#   pip install tensorflow==2.17.0 tf-keras==2.17.0
+#   pip install -r requirements.txt
 # =====================================================================
+
 
 # ---------------------------------------------------------------------
 # API SERVER
@@ -14,7 +49,8 @@ aiofiles==24.1.0
 # ---------------------------------------------------------------------
 # TEXT — NLP & AI detection
 # ---------------------------------------------------------------------
-transformers==4.46.3
+# ⚠️  CHANGED: 4.46.3 → 4.44.2 (see notes above)
+transformers==4.44.2
 sentencepiece==0.2.0
 accelerate==1.1.1
 captum==0.7.0
@@ -23,14 +59,17 @@ sentence-transformers
 # ---------------------------------------------------------------------
 # CORE DEEP LEARNING
 # ---------------------------------------------------------------------
-# TensorFlow (used for some model layers)
-tensorflow==2.16.1
-tf-keras
+# ⚠️  CHANGED: 2.16.1 → 2.17.0 (see notes above)
+tensorflow==2.17.0
+# ⚠️  CHANGED: now pinned — required for legacy Keras 2 API shim
+tf-keras==2.17.0
 
-# PyTorch stack — check https://pytorch.org for CUDA-specific wheels
-torch==2.2.2
-torchvision==0.17.2
-torchaudio==2.2.2
+# PyTorch stack
+# ⚠️  CHANGED: 2.2.2 → 2.3.1 (Python 3.12 stable release)
+# For GPU: replace with CUDA-specific wheels from https://pytorch.org
+torch==2.3.1
+torchvision==0.18.1
+torchaudio==2.3.1
 
 # ---------------------------------------------------------------------
 # AUDIO PROCESSING
@@ -38,8 +77,8 @@ torchaudio==2.2.2
 librosa==0.10.2.post1
 soundfile==0.12.1
 scipy==1.13.1
-# openai-whisper — do NOT pin to 20240930, it fails to build on Python 3.12
-# due to a pkg_resources bug in its setup.py. Let pip resolve the latest working version.
+# openai-whisper: unpinned intentionally — pkg_resources bug in older
+# versions breaks Python 3.12 builds. Let pip resolve latest working.
 openai-whisper
 
 # ---------------------------------------------------------------------
@@ -62,9 +101,6 @@ seaborn==0.13.2
 # ---------------------------------------------------------------------
 PyPDF2==3.0.1
 python-docx==1.1.2
-# Note: 'textract' is intentionally excluded — it requires system-level
-#       LibreOffice / antiword binaries that break on Windows.
-#       PDF and DOCX are handled natively above.
 
 # ---------------------------------------------------------------------
 # OCR
@@ -80,6 +116,7 @@ reportlab==4.2.5
 # MACHINE LEARNING & METRICS
 # ---------------------------------------------------------------------
 scikit-learn==1.5.1
+# ⚠️  KEEP at 1.26.4 — numpy 2.x breaks torch, librosa, and opencv
 numpy==1.26.4
 pandas==2.2.2
 
