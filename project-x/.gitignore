@@ -1,0 +1,39 @@
+# Python
+*.py[cod]
+*$py.class
+__pycache__/
+*.so
+
+# Model weights & configurations (VERY IMPORTANT)
+*.pth
+*.pt
+*.bin
+*.onnx
+models/**/*.json
+!models/**/__init__.py
+
+# Analysis Pipeline Runtime
+output/
+upload_tmp/
+hash_db.json
+results/
+report/
+
+# Data (if added later)
+data/
+datasets/
+checkpoints/
+
+# Virtual environments
+venv/
+env/
+.env
+.venv
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
