@@ -1,7 +1,0 @@
-pip install torch
-pip install openai-whisper
-pip install pytesseract
-pip install opencv-python
-pip install sentence-transformers
-pip install scikit-learn
-pip install numpy
